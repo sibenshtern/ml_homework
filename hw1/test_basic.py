@@ -10,8 +10,8 @@ def test_arange_elems():
 
 
 def test_div_zero():
-    a = torch.zeros(1, dtype=torch.long)
-    b = torch.ones(1, dtype=torch.long)
+    a = torch.ones(1, dtype=torch.long)
+    b = torch.zeros(1, dtype=torch.long)
 
     assert torch.isfinite(b / a)
 

@@ -15,23 +15,41 @@ def compute_accuracy(preds, targets):
     return result
 
 
-def main():
+def compute_metrics(device, test_loader, model, loss, step):
+    all_preds = []
+    all_labels = []
+
+    for test_images, test_labels in test_loader:
+        test_images = test_images.to(device)
+        test_labels = test_labels.to(device)
+
+        with torch.inference_mode():
+            outputs = model(test_images)
+            preds = torch.argmax(outputs, 1)
+
+            all_preds.append(preds)
+            all_labels.append(test_labels)
+
+    accuracy = compute_accuracy(torch.cat(all_preds), torch.cat(all_labels))
+
+    metrics = {'test_acc': accuracy, 'train_loss': loss}
+    wandb.log(metrics, step=step)
+
+
+def main(device, train_dataset=None):
     transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize((0.4914, 0.4822, 0.4465), (0.247, 0.243, 0.261)),
         transforms.Resize((224, 224))
     ])
 
-    train_dataset = CIFAR10(root='CIFAR10/train',
-                            train=True,
-                            transform=transform,
-                            download=False,
-                            )
+    if train_dataset is None:
+        train_dataset = CIFAR10(root='CIFAR10/train', transform=transform, download=False)
 
     test_dataset = CIFAR10(root='CIFAR10/test',
                            train=False,
                            transform=transform,
-                           download=False,
+                           download=False
                            )
 
     train_loader = torch.utils.data.DataLoader(dataset=train_dataset,
@@ -41,12 +59,7 @@ def main():
     test_loader = torch.utils.data.DataLoader(dataset=test_dataset,
                                               batch_size=config["batch_size"])
 
-    if torch.backends.mps.is_available():
-        device = torch.device("mps")
-    elif torch.cuda.is_available():
-        device = torch.device("cuda")
-    else:
-        device = torch.device("cpu")
+    device = torch.device(device)
 
     model = resnet18(pretrained=False, num_classes=10, zero_init_residual=config["zero_init_residual"])
     model.to(device)
@@ -67,26 +80,12 @@ def main():
             optimizer.step()
             optimizer.zero_grad()
 
+            step = epoch * len(train_dataset) + (i + 1) * config["batch_size"]
+
             if i % 100 == 0:
-                all_preds = []
-                all_labels = []
-
-                for test_images, test_labels in test_loader:
-                    test_images = test_images.to(device)
-                    test_labels = test_labels.to(device)
-
-                    with torch.inference_mode():
-                        outputs = model(test_images)
-                        preds = torch.argmax(outputs, 1)
-
-                        all_preds.append(preds)
-                        all_labels.append(test_labels)
-
-                accuracy = compute_accuracy(torch.cat(all_preds), torch.cat(all_labels))
-
-                metrics = {'test_acc': accuracy, 'train_loss': loss}
-                wandb.log(metrics, step=epoch * len(train_dataset) + (i + 1) * config["batch_size"])
+                compute_metrics(device, test_loader, model, loss, step)
             if config['one_batch']:
+                compute_metrics(device, test_loader, model, loss, step)
                 break
 
     torch.save(model.state_dict(), "model.pt")
