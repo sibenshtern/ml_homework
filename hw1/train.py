@@ -92,7 +92,3 @@ def main(device, train_dataset=None):
 
     with open("run_id.txt", "w+") as f:
         print(wandb.run.id, file=f)
-
-
-if __name__ == '__main__':
-    main()

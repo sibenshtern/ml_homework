@@ -20,6 +20,7 @@ def test_div_zero_python():
     with pytest.raises(ZeroDivisionError):
         1 / 0
 
+
 def test_accuracy():
     preds = torch.randint(0, 2, size=(100,))
     targets = preds.clone()
@@ -30,6 +31,7 @@ def test_accuracy():
     targets = torch.tensor([1,2,3,4,5,6])
 
     assert compute_accuracy(preds, targets) == 0.5
+
 
 @pytest.mark.parametrize("preds,targets,result",[
     (torch.tensor([1,2,3]),torch.tensor([1,2,3]), 1.0),

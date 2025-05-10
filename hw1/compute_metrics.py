@@ -1,5 +1,4 @@
 import json
-from argparse import ArgumentParser
 
 import torch
 import torchvision.transforms as transforms
@@ -43,12 +42,6 @@ def main(device):
 
     accuracy = correct / len(test_dataset)
 
-    with open("final_metrics.json", "w+") as f:
+    with open("metrics.json", "w+") as f:
         json.dump({"accuracy": accuracy.item()}, f)
         print("\n", file=f)
-
-
-if __name__ == '__main__':
-    parser = ArgumentParser()
-    args = parser.parse_args()
-    main(args)
