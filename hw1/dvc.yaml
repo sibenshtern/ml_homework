@@ -20,5 +20,5 @@ stages:
     - compute_metrics.py
     - model.pt
     metrics:
-    - final_metrics.json:
+    - metrics.json:
         cache: false
