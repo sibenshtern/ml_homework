@@ -1,0 +1,85 @@
+import os
+import json
+import shutil
+from pathlib import Path
+
+import pytest
+import torch
+from torchvision.datasets import CIFAR10
+
+from train import main as train_main
+from compute_metrics import main as metrics_main
+from prepare_data import prepare_data
+from hparams import config
+
+
+@pytest.fixture()
+def train_dataset():
+    # note: реализуйте и протестируйте подготовку данных (скачиание и препроцессинг)
+    # if 'CIFAR10' in os.listdir('.'):
+    #     shutil.rmtree('CIFAR10')
+
+    train_dataset, test_dataset = prepare_data()
+
+    assert CIFAR10(root='CIFAR10/train', download=False)
+    assert CIFAR10(root='CIFAR10/test', train=False, download=False)
+
+    return train_dataset
+
+
+@pytest.mark.parametrize(["device"], [["cpu"], ["cuda"], ["mps"]])
+def test_train_on_one_batch(device, train_dataset):
+    # note: реализуйте и протестируйте один шаг обучения вместе с метрикой
+    if device == "cuda" and not torch.cuda.is_available():
+        pytest.skip("CUDA is not available")
+    if device == "mps" and not torch.backends.mps.is_available():
+        pytest.skip("MPS is not available")
+
+    default_epochs = config['epochs']
+
+    config['epochs'] = 1
+    config['one_batch'] = True
+    try:
+        train_main()
+    finally:
+        config['epochs'] = default_epochs
+        config['one_batch'] = False
+
+
+@pytest.mark.parametrize(["device"], [["cpu"], ["cuda"], ["mps"]])
+def test_training(device):
+    # note: реализуйте и протестируйте полный цикл обучения модели (обучение, валидацию, логирование, сохранение артефактов)
+    if device == "cuda" and not torch.cuda.is_available():
+        pytest.skip("CUDA is not available")
+    if device == "mps" and not torch.backends.mps.is_available():
+        pytest.skip("MPS is not available")
+
+    model_file = Path("model.pt")
+    run_id_file = Path("run_id.txt")
+    metrics_file = Path("metrics.json")
+
+    if model_file.exists():
+        os.remove(model_file)
+    if run_id_file.exists():
+        os.remove(run_id_file)
+
+    train_main()
+
+    assert model_file.exists(), "Модель не сохранилась в model.pt"
+
+    state = torch.load(model_file, map_location=device)
+    assert isinstance(state, dict), "Содержимое model.pt не является dict"
+
+    with open(run_id_file) as file:
+        run_id = file.readline().strip()
+        assert len(run_id) > 0, "Файл run_id.txt пустой"
+
+    metrics_main()
+
+    with open(metrics_file) as file:
+        metrics = json.load(file)
+        assert "accuracy" in metrics, "Accuracy отсутствует в файле"
+        assert 0 <= metrics["accuracy"] <= 1, "Accuracy некорректна"
+
+
+

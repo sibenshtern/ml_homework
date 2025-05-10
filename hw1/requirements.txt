@@ -1,0 +1,7 @@
+torch==2.6.0
+torchvision==0.21.0
+tqdm==4.67.1
+pytest==8.3.4
+pytest-cov==6.1.1
+wandb
+dvc==3.59.2
